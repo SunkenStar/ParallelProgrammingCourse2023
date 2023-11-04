@@ -19,23 +19,31 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
 
+    // Fix the message content, and use no complex calculation to get source and destination
     if (myid == 0) {
+        // Process 0 send the message to process 1 and wait for process N to send back
+        // The order is MPI_Send first, then MPI_Recv
         start = MPI_Wtime();
         MPI_Send(message, l, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
-        MPI_Recv(message, 100, MPI_CHAR, numprocs - 1, numprocs - 1, MPI_COMM_WORLD, &status);
+        // Process waiting for returned message
+        MPI_Recv(message, 100, MPI_CHAR, numprocs - 1, 0, MPI_COMM_WORLD, &status);
+        // Calculate the time between sending from Process 0 and receiving of Process 0
+        // This is the time of the communication Ring.
         end = MPI_Wtime();
         printf("%s\n", message);
         printf("%lf\n", end - start);
     } else if (myid == numprocs - 1){
+        // The communication order is Receive first and then Send
+        // No dead lock in this order even the buffer size is limitted
         source = myid - 1;
         dest = 0;
-        MPI_Recv(message, 100, MPI_CHAR, source, source, MPI_COMM_WORLD, &status);
-        MPI_Send(message, l, MPI_CHAR, dest, myid, MPI_COMM_WORLD);
+        MPI_Recv(message, 100, MPI_CHAR, source, 0, MPI_COMM_WORLD, &status);
+        MPI_Send(message, l, MPI_CHAR, dest, 0, MPI_COMM_WORLD);
     } else {
         source = myid - 1;
         dest = myid + 1;
-        MPI_Recv(message, 100, MPI_CHAR, source, source, MPI_COMM_WORLD, &status);
-        MPI_Send(message, l, MPI_CHAR, dest, myid, MPI_COMM_WORLD);
+        MPI_Recv(message, 100, MPI_CHAR, source, 0, MPI_COMM_WORLD, &status);
+        MPI_Send(message, l, MPI_CHAR, dest, 0, MPI_COMM_WORLD);
     }
     // Release resources
     MPI_Finalize();
